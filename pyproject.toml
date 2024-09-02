@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rpcindaemon"
+version = "1.0"
+readme = "README.md"
+authors = [ {name = "lzq", email = 'justgotpaid88@qq.com'} ]
+description = 'run and shutdown a python module in daemon or in frontground using ssh(available on linux and windows) 使用ssh远程运行或关闭python模块，可选后台运行或前台运行[Linux 和 Windows通用]'
+requires-python = ">=3.9"
+keywords = ["ssh", "daemon", "rpc", "daemonize", "paramiko", "daemoniker", "remote-python-execution"]
+dependencies = ["paramiko", "python-daemon"]
+
+[tool.setuptools]
+packages = ['rpcindaemon']
