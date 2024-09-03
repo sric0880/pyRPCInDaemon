@@ -4,7 +4,6 @@ import socket
 import time
 from collections import defaultdict
 from multiprocessing.connection import Client
-from pathlib import Path
 
 import paramiko
 
@@ -87,7 +86,7 @@ class Task:
         task_id: int,
         cmd: str,
         hostname: str,
-        working_dir: Path = "",
+        working_dir: str = "",
         py_env_activate: str = "",
         username: str = None,
         password: str = None,
@@ -115,7 +114,7 @@ class Task:
         self.cmd = cmd
         self.hostname = hostname
         if working_dir:
-            working_dir = f"cd {working_dir.as_posix()};"
+            working_dir = f"cd {working_dir};"
         if working_dir is None:
             raise ParamError("working_dir must not be None")
         self.working_dir = working_dir

@@ -1,49 +1,74 @@
-import os
 import sys
-from pathlib import Path, PurePosixPath
 
 import paramiko
 import pytest
 
 import rpcindaemon
 
-# TODO to change to your own config
-hostname = "192.168.2.9"
-user = "admin"
-pwd = "xxxxxxxx"
-py_env_activate = "eval \"$('/c/ProgramData/Anaconda3/Scripts/conda.exe' 'shell.bash' 'hook')\"; conda activate base;"
-
 not_exists_hostname = "192.168.2.202"
 wrong_user = "wrong-user"
 wrong_pwd = "wrong-pwd"
 
 
-def test_exceptions():
+@pytest.fixture
+def param():
+    # TODO to change to your own config
+    if sys.platform == "win32":
+        return {
+            "hostname": "192.168.2.9",
+            "user": "admin",
+            "pwd": "xxxxxxxx",
+            "py_env_activate": "eval \"$('/c/ProgramData/Anaconda3/Scripts/conda.exe' 'shell.bash' 'hook')\"; conda activate base;",
+            "working_path": "D:/lzq/pyRPCInDaemon/tests",
+        }
+    else:
+        return {
+            "hostname": "",
+            "user": "root",
+            "pwd": "",
+            "py_env_activate": "",
+            "working_path": "/root/pyRPCInDaemon/tests",
+        }
+
+
+def test_exceptions(param):
     with pytest.raises(rpcindaemon.ParamError) as e:
         rpcindaemon.Task(0, "echo hello", "").run()
 
     with pytest.raises(rpcindaemon.ParamError) as e:
-        rpcindaemon.Task(0, "", hostname).run()
+        rpcindaemon.Task(0, "", param["hostname"]).run()
 
     with pytest.raises(rpcindaemon.ParamError) as e:
-        rpcindaemon.Task(-1, "echo hello", hostname).run()
+        rpcindaemon.Task(-1, "echo hello", param["hostname"]).run()
 
     with pytest.raises(paramiko.ssh_exception.AuthenticationException) as e:
-        rpcindaemon.Task(0, "echo hello", hostname).run()
+        rpcindaemon.Task(0, "echo hello", param["hostname"]).run()
 
     with pytest.raises(paramiko.ssh_exception.AuthenticationException) as e:
         rpcindaemon.Task(
-            0, "echo hello", hostname, username=user, password=wrong_pwd
+            0,
+            "echo hello",
+            param["hostname"],
+            username=param["user"],
+            password=wrong_pwd,
         ).run()
 
     with pytest.raises(paramiko.ssh_exception.AuthenticationException) as e:
         rpcindaemon.Task(
-            0, "echo hello", hostname, username=wrong_user, password=pwd
+            0,
+            "echo hello",
+            param["hostname"],
+            username=wrong_user,
+            password=param["pwd"],
         ).run()
 
     with pytest.raises(rpcindaemon.NetworkTimeoutError) as e:
         rpcindaemon.Task(
-            0, "echo hello", not_exists_hostname, username=user, password=pwd
+            0,
+            "echo hello",
+            not_exists_hostname,
+            username=param["user"],
+            password=param["pwd"],
         ).run()
 
 
@@ -52,21 +77,15 @@ def exist_pid():
     return 4 if sys.platform == "win32" else 1
 
 
-@pytest.fixture
-def working_path() -> Path:
-    """Get the current folder of the test"""
-    return Path(__file__).parent
-
-
-def test_get_pid(exist_pid, working_path):
+def test_get_pid(param, exist_pid):
     assert (
         rpcindaemon.Task(
             0,
             "echo hello",
-            hostname,
-            username=user,
-            password=pwd,
-            py_env_activate=py_env_activate,
+            param["hostname"],
+            username=param["user"],
+            password=param["pwd"],
+            py_env_activate=param["py_env_activate"],
         ).get_pid()
         == 0
     )
@@ -75,11 +94,11 @@ def test_get_pid(exist_pid, working_path):
         rpcindaemon.Task(
             999999,
             "echo hello",
-            hostname,
-            username=user,
-            password=pwd,
-            py_env_activate=py_env_activate,
-            working_dir=working_path,
+            param["hostname"],
+            username=param["user"],
+            password=param["pwd"],
+            py_env_activate=param["py_env_activate"],
+            working_dir=param["working_path"],
         ).get_pid()
         == 0
     )
@@ -88,11 +107,11 @@ def test_get_pid(exist_pid, working_path):
         rpcindaemon.Task(
             exist_pid,
             "echo hello",
-            hostname,
-            username=user,
-            password=pwd,
-            py_env_activate=py_env_activate,
-            working_dir=working_path,
+            param["hostname"],
+            username=param["user"],
+            password=param["pwd"],
+            py_env_activate=param["py_env_activate"],
+            working_dir=param["working_path"],
         ).get_pid()
         == exist_pid
     )
