@@ -2,7 +2,8 @@ import os
 import socket
 import threading
 import typing
-from multiprocessing.connection import Listener
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing.connection import Listener, Connection, Client
 
 from .exceptions import MethodNotFound
 
@@ -22,7 +23,6 @@ class ServerCmd:
         executor = getattr(self, self.cmd_name, None)
         if executor is None:
             raise MethodNotFound(f"method {self.cmd_name} not found.")
-        print(f"execute cmd {self}")
         return executor(*self.cmd_args, **self.cmd_kwargs)
 
     def __str__(self) -> str:
@@ -36,51 +36,56 @@ class RpcServer:
     def __init__(self, port: int, cmd_cls: typing.Type[ServerCmd]):
         self.port = port
         self.cmd_cls = cmd_cls
+        self._thread_pool = ThreadPoolExecutor(max_workers=10)
         self._server = None
-        # 最多接受两个并发连接（一个用于发起者，一个用于监控者）
-        self._server_thread_1 = None
-        self._server_thread_2 = None
+        self._stop = False
+        self._socket_info = None
 
     def start(self):
         host = socket.gethostbyname(socket.gethostname())
-        self._server = Listener((host, self.port))
-        self._server_thread_1 = threading.Thread(target=self.serve_forever, args=(1,))
-        self._server_thread_1.daemon = True
-        self._server_thread_1.start()
-        self._server_thread_2 = threading.Thread(target=self.serve_forever, args=(2,))
-        self._server_thread_2.daemon = True
-        self._server_thread_2.start()
+        self._socket_info = (host, self.port)
+        self._server = Listener(self._socket_info)
+        self._server_thread = threading.Thread(target=self.serve_forever)
+        self._server_thread.daemon = True
+        self._server_thread.start()
         print(f"Start server[RPC] running at {host}:{self.port}")
 
-    def serve_forever(self, tid):
-        try:
-            while True:
+    def serve_forever(self):
+        while True:
+            try:
                 with self._server.accept() as conn:
-                    print(f"connected {tid}")
-                    try:
-                        while True:
-                            # Receive a message
-                            func_name, args, kwargs = conn.recv()
-                            # Run the RPC and send a response
-                            try:
-                                r = self.cmd_cls(func_name, args, kwargs).execute()
-                                conn.send(r)
-                            except Exception as e:
-                                conn.send(e)
-                    except EOFError:
-                        pass
-                    print(f"disconnected {tid}")
-        except:  # accept error
-            pass
+                    if self._stop:
+                        break
+                    self._thread_pool.submit(_do_recv, conn, self.cmd_cls)
+            except Exception as e: # accept error
+                print(e)
 
     def stop(self):
+        self._stop = True
+        try:
+            Client(self._socket_info) # to unblock accept()
+        except:
+            pass
+        if self._server_thread is not None:
+            self._server_thread.join()
+            self._server_thread = None
         if self._server is not None:
             self._server.close()
             self._server = None
-        if self._server_thread_1 is not None:
-            self._server_thread_1.join()
-            self._server_thread_1 = None
-        if self._server_thread_2 is not None:
-            self._server_thread_2.join()
-            self._server_thread_2 = None
-        print("Close server[RPC].")
+        print("Close server[RPC]")
+
+def _do_recv(conn: Connection, cmd_cls: typing.Type[ServerCmd]):
+    try:
+        while True:
+            # Receive a message
+            func_name, args, kwargs = conn.recv()
+            # Run the RPC and send a response
+            try:
+                r = cmd_cls(func_name, args, kwargs).execute()
+                conn.send(r)
+            except Exception as e:
+                conn.send(e)
+    except EOFError:
+        pass
+    finally:
+        conn.close()

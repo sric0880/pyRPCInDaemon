@@ -20,7 +20,12 @@ class _RPCProxy:
     def do_rpc(self, func_name: str, *args, **kwargs):
         if self._connection is None:
             self._connection = Client(self.address)
-        self._connection.send((func_name, args, kwargs))
+        try:
+            self._connection.send((func_name, args, kwargs))
+        except OSError:
+            self.close()
+            # reconnect
+            self._connection = Client(self.address)
         _try_count = 0
         while True:
             # 第一次调用recv时会报  [Errno 11] Resource temporarily unavailable
