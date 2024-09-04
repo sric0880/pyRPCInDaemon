@@ -76,8 +76,11 @@ class RpcServer:
     def stop(self):
         if self._server is not None:
             self._server.close()
+            self._server = None
         if self._server_thread_1 is not None:
             self._server_thread_1.join()
+            self._server_thread_1 = None
         if self._server_thread_2 is not None:
             self._server_thread_2.join()
+            self._server_thread_2 = None
         print("Close server[RPC].")

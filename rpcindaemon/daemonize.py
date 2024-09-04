@@ -1,5 +1,7 @@
+import atexit
 import functools
 import os
+import signal
 
 import filelock
 
@@ -32,24 +34,59 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                 with filelock.FileLock(pidfile_lockfile, blocking=False):
                     with open(pidfile, "w") as f:
                         f.write(str(os.getpid()) + "\n")
-                    port = kwargs.get('port')
-                    if port:
-                        # setup a tcp server
-                        server = RpcServer(port, server_cmd)
+                    server = None
+                    def _release():
+                        nonlocal server
+                        nonlocal pidfile
                         try:
-                            server.start()
-                            func(task_id, *args, **kwargs)
-                        except:
-                            raise
-                        finally:
+                            os.remove(pidfile)
+                        except OSError:
+                            pass
+                        if server is not None:
                             server.stop()
-                    else:
-                        func(task_id, *args, **kwargs)
+                            server = None
+                    atexit.register(_release)
                     try:
-                        os.remove(pidfile)
-                    except OSError:
-                        pass
-
+                        port = kwargs.get('port')
+                        if port:
+                            # setup a tcp server
+                            server = RpcServer(port, server_cmd)
+                            server.start()
+                        func(task_id, *args, **kwargs)
+                    except:
+                        raise
+                    finally:
+                        _release()
+                        
         return _wrapper
 
     return decorate_func
+
+
+def set_signal_handler(handler):
+    def _sigstop_linuxlike(signum, stackframe):
+        handler()
+    if signal.getsignal(signal.SIGINT) == signal.default_int_handler:
+        signal.signal(signal.SIGINT, _sigstop_linuxlike)
+    if signal.getsignal(signal.SIGTERM) == signal.SIG_DFL:
+        signal.signal(signal.SIGTERM, _sigstop_linuxlike)
+
+# windows 单进程 前台：sighandler=None
+# windows 单进程 后台：sighandler!=None
+# linux 单进程 前台：sighandler=None
+# linux 单进程 后台：sighandler=None
+# def set_sighandler_one_process(sighandler, contexts):
+#     if sighandler is None:
+#         if signal.getsignal(signal.SIGINT) == signal.default_int_handler:
+#             signal.signal(signal.SIGINT, partial(_sigstop1, contexts))
+#         if signal.getsignal(signal.SIGTERM) == signal.SIG_DFL:
+#             signal.signal(signal.SIGTERM, partial(_sigstop1, contexts))
+#     else:
+#         # Windows daemon环境下
+#         def __sigstop(signum):
+#             _sigstop(contexts, signum)
+#             sighandler._stop_nowait()
+
+#         sighandler.sigint = __sigstop
+#         sighandler.sigterm = __sigstop
+#         sighandler.sigabrt = __sigstop
