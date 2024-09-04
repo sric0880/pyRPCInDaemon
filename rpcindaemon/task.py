@@ -24,8 +24,9 @@ class _RPCProxy:
             self._connection.send((func_name, args, kwargs))
         except OSError:
             self.close()
-            # reconnect
-            self._connection = Client(self.address)
+            # retry 
+            self.do_rpc(func_name, *args, **kwargs)
+            return
         _try_count = 0
         while True:
             # 第一次调用recv时会报  [Errno 11] Resource temporarily unavailable
@@ -154,17 +155,21 @@ class Task:
             self.username,
             self.password,
         )
+        _n = 1
+        while(not self.is_alive()):
+            if _n > 5:
+                self.running = False
+                return
+            time.sleep(0.1)
+            _n += 1
         self.running = True
 
     def is_alive(self):
-        """
-        判断进程是否存在
-        """
         return self.get_pid() > 0
 
     def get_pid(self):
         """
-        返回进程id:
+        return pid:
             0 - 进程不存在, 也有可能存在，但是因为网络错误
         """
         if not self.running:

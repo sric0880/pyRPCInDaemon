@@ -53,10 +53,11 @@ class RpcServer:
     def serve_forever(self):
         while True:
             try:
-                with self._server.accept() as conn:
-                    if self._stop:
-                        break
-                    self._thread_pool.submit(_do_recv, conn, self.cmd_cls)
+                conn = self._server.accept()
+                if self._stop:
+                    conn.close()
+                    break
+                self._thread_pool.submit(_do_recv, conn, self.cmd_cls)
             except Exception as e: # accept error
                 print(e)
 

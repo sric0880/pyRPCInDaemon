@@ -27,7 +27,7 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                 )
             with daemon.DaemonContext(
                 working_directory=cwd, stdout=stdout_file, stderr=stdout_file
-            ):
+            ): # fork. parent process has exited.
                 pidfile_lockfile = f"{pidfile}.lock"
                 with filelock.FileLock(pidfile_lockfile, blocking=False):
                     with open(pidfile, "w") as f:
