@@ -1,23 +1,37 @@
-import argparse
 import signal
 import sys
+from typing import List
 
+import fire
 import psutil
 
+from .exceptions import ParamError
 
-def terminate_proc(pids, strategy_ids):
+
+def terminate_proc(pids: List[int]=[], task_ids: List[int]=[]):
+    """
+    terminate processes by pids or task-ids
+
+    params:
+        pids: list of process ids to terminate, using on Linux.
+        task_ids: list of task ids to terminate task, using on Windows.
+    """
     if sys.platform == "win32":
+        if not task_ids:
+            raise ParamError("terminate_proc on windows need --task-ids=[tid,...] options")
         from rpcindaemon.daemoniker import SIGINT, send
 
         try:
-            for sid in strategy_ids:
+            for tid in task_ids:
                 # Send a SIGINT to a process denoted by a PID file
-                send(f"pidfile-{sid}", SIGINT)
+                send(f"pidfile-{tid}", SIGINT)
             return True
         except Exception as e:
             print(str(e))
             return False
-    elif sys.platform == "linux":
+    else:
+        if not pids:
+            raise ParamError("terminate_proc on linux need --task-ids=[pid,...] options")
         try:
             wait_procs = []
             for _pid in pids:
@@ -35,10 +49,10 @@ def terminate_proc(pids, strategy_ids):
             return False
 
 
-def get_pid(strategy_id):
-    """从进程文件读取pid并判断pid是否活跃"""
+def get_pid(task_id: int):
+    """read pid from pidfile, return 0 if process is dead"""
     try:
-        with open(f"pidfile-{strategy_id}", "r") as f:
+        with open(f"pidfile-{task_id}", "r") as f:
             pid = int(f.read().strip())
         return pid if psutil.pid_exists(pid) else 0
     except:
@@ -46,31 +60,7 @@ def get_pid(strategy_id):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    commands = parser.add_subparsers(title="子任务", required=True, dest="cmd")
-
-    cmd1_parser = commands.add_parser("term")
-    cmd1_parser.add_argument(
-        "-pids",
-        nargs="+",
-        type=int,
-        required=True,
-        help="pid进程ID列表，" "分隔。Linux必填，Windows可填0",
-    )
-    cmd1_parser.add_argument(
-        "-ids",
-        nargs="+",
-        type=int,
-        required=True,
-        help="策略ID列表，" "分隔。Windows必填，Linux可填0",
-    )
-
-    cmd2_parser = commands.add_parser("get-pid")
-    cmd2_parser.add_argument("taskid", help="task id")
-
-    args = parser.parse_args()
-    cmd = args.cmd
-    if cmd == "term":
-        terminate_proc(args.pids, args.ids)
-    elif cmd == "get-pid":
-        print(get_pid(args.taskid))
+    fire.Fire({
+        "terminate_proc": terminate_proc,
+        "get_pid": get_pid,
+    })
