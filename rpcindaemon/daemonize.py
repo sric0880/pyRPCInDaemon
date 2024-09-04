@@ -4,10 +4,10 @@ import os
 import filelock
 
 from .exceptions import *
-from .rpcserver import RpcServer
+from .rpcserver import RpcServer, ServerCmd
 
 
-def makedaemon(log_dir="."):
+def makedaemon(log_dir=".", server_cmd=ServerCmd):
     """
     Params:
     log_dir: daemon process write log to
@@ -35,7 +35,7 @@ def makedaemon(log_dir="."):
                     port = kwargs.get('port')
                     if port:
                         # setup a tcp server
-                        server = RpcServer(port)
+                        server = RpcServer(port, server_cmd)
                         try:
                             server.start()
                             func(task_id, *args, **kwargs)
