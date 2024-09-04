@@ -1,10 +1,10 @@
 import functools
 import os
-import sys
 
 import filelock
 
 from .exceptions import *
+from .rpcserver import RpcServer
 
 
 def makedaemon(log_dir="."):
@@ -32,7 +32,19 @@ def makedaemon(log_dir="."):
                 with filelock.FileLock(pidfile_lockfile, blocking=False):
                     with open(pidfile, "w") as f:
                         f.write(str(os.getpid()) + "\n")
-                    func(task_id, *args, **kwargs)
+                    port = kwargs.get('port')
+                    if port:
+                        # setup a tcp server
+                        server = RpcServer(port)
+                        try:
+                            server.start()
+                            func(task_id, *args, **kwargs)
+                        except:
+                            raise
+                        finally:
+                            server.stop()
+                    else:
+                        func(task_id, *args, **kwargs)
                     try:
                         os.remove(pidfile)
                     except OSError:

@@ -18,13 +18,9 @@ class TaskIsRunningError(RPCInDaemonError):
     pass
 
 
-class TaskIsNotRunningError(RPCInDaemonError):
-    pass
-
-
-class ParamTaskIdMissing(ParamError):
-    pass
-
-
 class PidfileExistsError(RPCInDaemonError):
+    pass
+
+
+class MethodNotFound(RPCInDaemonError):
     pass

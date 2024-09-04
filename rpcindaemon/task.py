@@ -68,7 +68,7 @@ class Task:
 
         Params:
             task_id: unique task id
-            cmd: to executed cammnad
+            cmd: to executed command
             hostname: remote hostname for ssh
             working_dir: execute `cd $working_dir` on remote before execute cmd
             py_env_activate: activate remote python everionment, eg. conda base, otherwise stay empty.
@@ -103,8 +103,10 @@ class Task:
         self.port = port
         if port > 0:
             self._client = _RPCProxy((hostname, port))
+            self._port_option = f"--port {port}"
         else:
             self._client = None
+            self._port_option = ""
         self.running = False
 
     def release(self):
@@ -121,6 +123,7 @@ class Task:
         with open(os.path.join(dir, f"taskfile-{self.task_id}.json"), "w") as f:
             d = copy.copy(self.__dict__)
             del d["_working_dir"]
+            del d["_port_option"]
             del d["_client"]
             json.dump(d, f)
 
@@ -141,7 +144,7 @@ class Task:
         if pid:
             raise TaskIsRunningError("cannot run a running task")
         _ssh_execute(
-            f"{self.py_env_activate} {self._working_dir} {self.cmd} --task-id={self.task_id}",
+            f"{self.py_env_activate} {self._working_dir} {self.cmd} --task-id={self.task_id} {self._port_option}",
             self.hostname,
             self.username,
             self.password,
@@ -183,14 +186,15 @@ class Task:
     def terminate(self):
         """
         退出远程进程
-
-        主动轮询是否退出成功
         """
+        if not self.running:
+            return
+        self.release()
         pid = self.get_pid()
         if not pid:
-            raise TaskIsNotRunningError("cannot terminate a task which is not running")
-        self.release()
-        cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry term -pids {pid} -ids {self.task_id}"
+            self.running = False
+            return
+        cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry terminate_proc -p [{pid}] -t [{self.task_id}]"
         _ssh_execute(cmd, self.hostname, self.username, self.password)
         self.running = False
 
@@ -283,7 +287,7 @@ def get_available_port(hostname: str):
 #                 sids.append(strat.id)
 #                 pids.append(pid)
 #         if sids and pids:
-#             cmd = f'{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry term -pids {" ".join(pids)} -ids {" ".join(sids)}'
+#             cmd = f'{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry terminate_proc -p {pids} -t {sids}'
 #             try:
 #                 self._ssh_execute(cmd, machine)
 #             except Exception as e:
