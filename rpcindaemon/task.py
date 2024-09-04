@@ -103,7 +103,7 @@ class Task:
         self.port = port
         if port > 0:
             self._client = _RPCProxy((hostname, port))
-            self._port_option = f"--port {port}"
+            self._port_option = f"--port={port}"
         else:
             self._client = None
             self._port_option = ""

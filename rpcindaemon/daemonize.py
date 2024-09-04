@@ -1,5 +1,4 @@
 import atexit
-import functools
 import os
 import signal
 
@@ -16,8 +15,7 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
     """
 
     def decorate_func(func):
-        @functools.wraps(func)
-        def _wrapper(task_id, *args, **kwargs):
+        def _wrapper(task_id, *args, port=0, **kwargs):
             import daemon
 
             cwd = os.getcwd()
@@ -47,7 +45,6 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                             server = None
                     atexit.register(_release)
                     try:
-                        port = kwargs.get('port')
                         if port:
                             # setup a tcp server
                             server = RpcServer(port, server_cmd)
