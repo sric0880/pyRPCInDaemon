@@ -1,6 +1,7 @@
 import os
 import socket
 import threading
+import typing
 from multiprocessing.connection import Listener
 
 from .exceptions import MethodNotFound
@@ -32,7 +33,7 @@ class ServerCmd:
 
 
 class RpcServer:
-    def __init__(self, port: int, cmd_cls: type[ServerCmd]):
+    def __init__(self, port: int, cmd_cls: typing.Type[ServerCmd]):
         self.port = port
         self.cmd_cls = cmd_cls
         self._server = None
