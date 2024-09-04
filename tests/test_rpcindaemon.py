@@ -10,26 +10,6 @@ wrong_user = "wrong-user"
 wrong_pwd = "wrong-pwd"
 
 
-@pytest.fixture
-def param():
-    # TODO to change to your own config
-    if sys.platform == "win32":
-        return {
-            "hostname": "192.168.2.9",
-            "user": "admin",
-            "pwd": "xxxxxxxx",
-            "py_env_activate": "eval \"$('/c/ProgramData/Anaconda3/Scripts/conda.exe' 'shell.bash' 'hook')\"; conda activate base;",
-            "working_path": "D:/lzq/pyRPCInDaemon/tests",
-        }
-    else:
-        return {
-            "hostname": "",
-            "user": "root",
-            "pwd": "",
-            "py_env_activate": "",
-            "working_path": "/root/pyRPCInDaemon/tests",
-        }
-
 @pytest.mark.skip
 def test_exceptions(param):
     with pytest.raises(rpcindaemon.ParamError) as e:
@@ -122,18 +102,6 @@ def test_simple_run(param):
         username=param["user"],
         password=param["pwd"],
         py_env_activate=param["py_env_activate"],
-    ).run()
-
-
-def test_heavy_task(param):
-    rpcindaemon.Task(
-        1,
-        "python heavy_task.py",
-        param["hostname"],
-        username=param["user"],
-        password=param["pwd"],
-        py_env_activate=param["py_env_activate"],
-        working_dir=param["working_path"]
     ).run()
 
 

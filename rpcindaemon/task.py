@@ -141,7 +141,7 @@ class Task:
         if pid:
             raise TaskIsRunningError("cannot run a running task")
         _ssh_execute(
-            f"{self.py_env_activate} {self._working_dir} {self.cmd}",
+            f"{self.py_env_activate} {self._working_dir} {self.cmd} --task-id={self.task_id}",
             self.hostname,
             self.username,
             self.password,

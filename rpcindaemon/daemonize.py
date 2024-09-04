@@ -15,17 +15,10 @@ def makedaemon(log_dir="."):
 
     def decorate_func(func):
         @functools.wraps(func)
-        def _wrapper(*args, **kwargs):
+        def _wrapper(task_id, *args, **kwargs):
             import daemon
 
             cwd = os.getcwd()
-            task_id = None
-            for arg in sys.argv:
-                if arg.startswith("--task-id="):
-                    task_id = arg[arg.index("=") + 1 :]
-                    break
-            if not task_id:
-                raise ParamTaskIdMissing("daemonize call without a task id")
             stdout_file = open(os.path.join(log_dir, f"pidfile-{task_id}.log"), "w")
             pidfile = f"pidfile-{task_id}"
             if os.path.exists(pidfile):
@@ -34,12 +27,12 @@ def makedaemon(log_dir="."):
                 )
             with daemon.DaemonContext(
                 working_directory=cwd, stdout=stdout_file, stderr=stdout_file
-            ) as dm:
+            ):
                 pidfile_lockfile = f"{pidfile}.lock"
                 with filelock.FileLock(pidfile_lockfile, blocking=False):
                     with open(pidfile, "w") as f:
                         f.write(str(os.getpid()) + "\n")
-                    func(*args, **kwargs)
+                    func(task_id, *args, **kwargs)
                     try:
                         os.remove(pidfile)
                     except OSError:

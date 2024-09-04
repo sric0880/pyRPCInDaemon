@@ -1,13 +1,14 @@
 import time
 import datetime
-from rpcindaemon.daemonize import indaemon
+import fire
+import rpcindaemon
 
 
-@indaemon()
-def heavy_backgournd_task():
-    print(datetime.datetime.now(), "start")
-    time.sleep(10)
-    print(datetime.datetime.now(), "end")
+@rpcindaemon.makedaemon()
+def heavy_backgournd_task(task_id, arg_sleep_time=10):
+    print(task_id, datetime.datetime.now(), "Start")
+    time.sleep(arg_sleep_time)
+    print(task_id, datetime.datetime.now(), "End")
 
 if __name__ == "__main__":
-    heavy_backgournd_task()
+    fire.Fire(heavy_backgournd_task)
