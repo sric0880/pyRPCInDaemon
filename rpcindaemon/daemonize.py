@@ -14,6 +14,14 @@ from .exceptions import *
 from .rpcserver import RpcServer, ServerCmd
 
 
+def nodaemon(server_cmd=ServerCmd):
+    global _is_daemon
+    _is_daemon = False
+    def decorate_func(func):
+        return func
+    return decorate_func
+
+
 def makedaemon(log_dir=".", server_cmd=ServerCmd):
     """
     Params:
@@ -162,19 +170,23 @@ def run_parallel(
         signal_stop = multiprocessing.Value(c_bool, False, lock=False)
         _set_sighandler_multi_process(signal_stop)
         # lock message_queue signal_stop 可以传入Process，但是不能通过pool.map 参数传入
-        # _init_pool_processes 和三个参数一起传入Process，并在子进程中执行_init_pool_processes函数
+        # _init_pool_processe 和三个参数一起传入Process，并在子进程中执行_init_pool_processes函数
         pool = multiprocessing.Pool(
-            max_cpus, _init_pool_processes, (lock, message_queue, signal_stop)
+            max_cpus, _init_pool_processe, (lock, message_queue, signal_stop)
         )
-        mapresult = pool.starmap_async(func, [(ctx, _is_daemon) for ctx in args])
+        mapresult = pool.starmap_async(func, [(arg, _is_daemon) for arg in args])
         while not mapresult.ready():
             try:
-                while True:
-                    msg = message_queue.get(timeout=0.1)
-                    # Linux下，当daemon运行时收到SIGINT时，msg会收到None
-                    if msg is not None:
-                        message_handler(msg)
-                    message_queue.task_done()
+                if message_queue is not None:
+                    while True:
+                        # raise Empty exception when empty
+                        msg = message_queue.get(timeout=0.1)
+                        # Linux下，当daemon运行时收到SIGINT时，msg会收到None
+                        if msg is not None:
+                            message_handler(msg)
+                        message_queue.task_done()
+                else:
+                    mapresult.wait(0.1)
             except Empty:
                 pass
             except EOFError:  # 当手动Kill子进程会导致该异常
@@ -200,7 +212,7 @@ def run_parallel(
             pool.close()
 
 
-def _init_pool_processes(a, b, c):
+def _init_pool_processe(a, b, c):
     global lock
     global message_queue
     global signal_stop
@@ -243,7 +255,8 @@ def set_signal_handler(handler):
 # linux 多进程 后台：_win32_sighandler=None, _is_daemon=True
 def _set_sighandler_multi_process(signal_stop):
     if not _is_daemon:
-        # 前台不需要设置，因为每个子进程也监听INT信号，如果在命令行窗口运行，INT信号会直接透传到子进程，不需要转发
+        # 父进程不需要设置，子进程需要设置。
+        # 每个子进程也监听INT信号，如果在命令行窗口运行，INT信号会直接透传到子进程，不需要转发
         signal.signal(signal.SIGINT, signal.SIG_IGN)  # 防止触发KeyboardInterrupt错误
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         return
