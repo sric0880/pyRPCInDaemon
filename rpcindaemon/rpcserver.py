@@ -10,10 +10,7 @@ from .exceptions import MethodNotFound
 __all__ = ["RpcServer"]
 
 
-# 输入 只对实盘有用
 class ServerCmd:
-    """指令"""
-
     def __init__(self, cmd_name, cmd_args, cmd_kwargs) -> None:
         self.cmd_name = cmd_name
         self.cmd_args = cmd_args
@@ -51,11 +48,14 @@ class RpcServer:
         print(f"Start server[RPC] running at {host}:{self.port}")
 
     def serve_forever(self):
+        all_connections = []
         while True:
             try:
                 conn = self._server.accept()
+                all_connections.append(conn)
                 if self._stop:
-                    conn.close()
+                    for c in all_connections:
+                        c.close()
                     break
                 self._thread_pool.submit(_do_recv, conn, self.cmd_cls)
             except Exception as e: # accept error
@@ -70,6 +70,8 @@ class RpcServer:
         if self._server_thread is not None:
             self._server_thread.join()
             self._server_thread = None
+        print("wait thread pool to close")
+        self._thread_pool.shutdown(wait=True)
         if self._server is not None:
             self._server.close()
             self._server = None
@@ -89,4 +91,8 @@ def _do_recv(conn: Connection, cmd_cls: typing.Type[ServerCmd]):
     except EOFError:
         pass
     finally:
-        conn.close()
+        print("quit do recv")
+        try:
+            conn.close()
+        except: # maybe close by stop()
+            pass
