@@ -70,7 +70,6 @@ class RpcServer:
         if self._server_thread is not None:
             self._server_thread.join()
             self._server_thread = None
-        print("wait thread pool to close")
         self._thread_pool.shutdown(wait=True)
         if self._server is not None:
             self._server.close()
@@ -91,7 +90,6 @@ def _do_recv(conn: Connection, cmd_cls: typing.Type[ServerCmd]):
     except EOFError:
         pass
     finally:
-        print("quit do recv")
         try:
             conn.close()
         except: # maybe close by stop()

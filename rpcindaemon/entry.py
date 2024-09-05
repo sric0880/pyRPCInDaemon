@@ -20,33 +20,21 @@ def terminate_proc(pids: List[int]=[], task_ids: List[int]=[]):
         if not task_ids:
             raise ParamError("terminate_proc on windows need --task-ids=[tid,...] options")
         from rpcindaemon.daemoniker import SIGINT, send
-
-        try:
-            for tid in task_ids:
-                # Send a SIGINT to a process denoted by a PID file
-                send(f"pidfile-{tid}", SIGINT)
-            return True
-        except Exception as e:
-            print(str(e))
-            return False
+        for tid in task_ids:
+            # Send a SIGINT to a process denoted by a PID file
+            send(f"pidfile-{tid}", SIGINT)
     else:
         if not pids:
             raise ParamError("terminate_proc on linux need --task-ids=[pid,...] options")
-        try:
-            wait_procs = []
-            for _pid in pids:
-                p = psutil.Process(_pid)
-                p.send_signal(signal.SIGINT)
-                wait_procs.append(p)
-            gone, alive = psutil.wait_procs(wait_procs, timeout=10)
-            for p in alive:
-                p.kill()
-                p.parent().send_signal(signal.SIGCHLD)
-            return True
-        except psutil.NoSuchProcess:
-            return False
-        except psutil.AccessDenied:
-            return False
+        wait_procs = []
+        for _pid in pids:
+            p = psutil.Process(_pid)
+            p.send_signal(signal.SIGINT)
+            wait_procs.append(p)
+        gone, alive = psutil.wait_procs(wait_procs, timeout=10)
+        for p in alive:
+            p.kill()
+            p.parent().send_signal(signal.SIGCHLD)
 
 
 def get_pid(task_id: int):

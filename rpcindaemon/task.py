@@ -5,11 +5,21 @@ import random
 import socket
 import time
 from collections import defaultdict
-from multiprocessing.connection import Client
+from multiprocessing.connection import Connection
 
 import paramiko
 
 from .exceptions import *
+
+
+def ClientWithTimeout(address, timeout):
+
+    with socket.socket() as s:
+        s.setblocking(True)
+        s.settimeout(timeout)
+        s.connect(address)
+        s.settimeout(None)
+        return Connection(s.detach())
 
 
 class _RPCProxy:
@@ -19,14 +29,8 @@ class _RPCProxy:
 
     def do_rpc(self, func_name: str, *args, **kwargs):
         if self._connection is None:
-            self._connection = Client(self.address)
-        try:
-            self._connection.send((func_name, args, kwargs))
-        except OSError:
-            self.close()
-            # retry 
-            self.do_rpc(func_name, *args, **kwargs)
-            return
+            self._connection = ClientWithTimeout(self.address, 0.1)
+        self._connection.send((func_name, args, kwargs))
         _try_count = 0
         while True:
             # 第一次调用recv时会报  [Errno 11] Resource temporarily unavailable
@@ -115,9 +119,9 @@ class Task:
             self._port_option = ""
         self.running = False
 
-    def release(self):
+    def reset_client(self):
         """
-        release the socket connection if the task is not used anymore.
+        reset_client the socket connection if the task is not used anymore.
         """
         if self._client is not None:
             self._client.close()
@@ -155,14 +159,18 @@ class Task:
             self.username,
             self.password,
         )
+        self.reset_client()
+        self.running = True
+        # wait until remote process is alive
         _n = 1
-        while(not self.is_alive()):
+        time.sleep(0.1)
+        while True:
             if _n > 5:
                 self.running = False
                 return
-            time.sleep(0.1)
+            if self.is_alive():
+                return
             _n += 1
-        self.running = True
 
     def is_alive(self):
         return self.get_pid() > 0
@@ -176,8 +184,12 @@ class Task:
             return 0
         if self._client is not None:
             # 通过RPC调用获取进程ID
-            pid_or_none = self._client.do_rpc("get_pid")
-            return pid_or_none if pid_or_none else 0
+            try:
+                pid_or_none = self._client.do_rpc("get_pid")
+                return pid_or_none if pid_or_none else 0
+            except (socket.timeout, ConnectionError):
+                # 无法连接到目标服务器，可能说明进程不存在，也有可能是网络错误
+                return 0
         else:
             # 通过ssh读取pidfile文件获取进程ID
             cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry get-pid {self.task_id}"
@@ -193,19 +205,22 @@ class Task:
             return self._client.do_rpc(func_name, *args, **kwargs)
         return None
 
-    def terminate(self):
+    def terminate(self, timeout=3):
         """
-        退出远程进程
+        quit remote process
+        
+        raise `rpcindaemon.exceptions.NetworkTimeoutError` if timeout. if your task is slow to quit,
+        you should pass longer timeout, maybe 12, because a force quit is done after 10 seconds.
+
+        raise `SSHExecutionError` if remote raise psutil.NoSuchProcess, psutil.AccessDenied,...
         """
         if not self.running:
             return
-        self.release()
         pid = self.get_pid()
-        if not pid:
-            self.running = False
-            return
-        cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry terminate_proc -p [{pid}] -t [{self.task_id}]"
-        _ssh_execute(cmd, self.hostname, self.username, self.password)
+        self.reset_client()
+        if pid:
+            cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry terminate_proc -p [{pid}] -t [{self.task_id}]"
+            _ssh_execute(cmd, self.hostname, self.username, self.password, timeout=timeout)
         self.running = False
 
 
