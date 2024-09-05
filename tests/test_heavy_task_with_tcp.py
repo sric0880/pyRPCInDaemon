@@ -14,22 +14,23 @@ def _test_port(param, task_id, port):
         password=param["pwd"],
         py_env_activate=param["py_env_activate"],
         working_dir=param["working_path"],
-        port=port
+        port=port,
     )
     t.run()
     assert t.is_alive()
-    assert t.do_rpc("deal_with_return", 1,23,45) == 69
-    assert t.do_rpc("deal_with_return", 1,23,45) == 69
-    assert t.do_rpc("deal_with_message", 1,23,45) is None
+    with pytest.raises(rpcindaemon.MethodNotFound):
+        t.do_rpc("deal_not_found")
+    assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
+    assert t.do_rpc("deal_with_message", 1, 23, 45) is None
     time.sleep(15)
     assert not t.is_alive()
 
-    t.run() # run again
+    t.run()  # run again
     assert t.is_alive()
     time.sleep(1)
-    assert t.do_rpc("deal_with_return", 1,23,45) == 69
-    assert t.do_rpc("deal_with_return", 1,23,45) == 69
-    assert t.do_rpc("deal_with_message", 1,23,45) is None
+    assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
+    assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
+    assert t.do_rpc("deal_with_message", 1, 23, 45) is None
     t.terminate()
     assert not t.is_alive()
 
@@ -37,6 +38,35 @@ def _test_port(param, task_id, port):
 def test_certain_port(param):
     _test_port(param, 11, 9999)
 
+
 @pytest.mark.skip
 def test_random_port(param):
     _test_port(param, 12, 0)
+
+
+def test_save_and_restore(param):
+    t = rpcindaemon.Task(
+        13,
+        "python heavy_task_with_tcp.py",
+        param["hostname"],
+        username=param["user"],
+        password=param["pwd"],
+        py_env_activate=param["py_env_activate"],
+        working_dir=param["working_path"],
+        port=9999,
+    )
+    t.run()
+    assert t.is_alive()
+    assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
+
+    t.save(".")
+
+    t2 = rpcindaemon.Task.restore_from_file(".", 13)
+    assert t2.is_alive()
+    assert t2.do_rpc("deal_with_return", 1, 23, 45) == 69
+
+    assert t2.get_pid() == t.get_pid()
+
+    t2.terminate()
+    assert not t2.is_alive()
+    assert not t.is_alive()

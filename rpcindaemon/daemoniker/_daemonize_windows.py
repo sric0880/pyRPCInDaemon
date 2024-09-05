@@ -434,7 +434,7 @@ def _daemonize1(pid_file, *args, chdir=None, stdin_goto=None, stdout_goto=None,
                 # Figure out the path to the current file
                 # worker_target = os.path.abspath(__file__)
                 worker_cmd = ('"' + python_path + '" -m ' +
-                              'quantcore.daemoniker._daemonize_windows_main ' +
+                              'rpcindaemon.daemoniker._daemonize_windows_main ' +
                               '"' + worker_argpath + '"')
                 
                 try:

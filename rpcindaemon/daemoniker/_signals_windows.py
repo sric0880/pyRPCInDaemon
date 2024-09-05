@@ -216,7 +216,7 @@ class SignalHandler1(_SighandlerCore):
         python_path = sys.executable
         python_path = os.path.abspath(python_path)
         worker_cmd = ('"' + python_path + '" -m ' +
-                      'quantcore.daemoniker._signals_windows_main')
+                      'rpcindaemon.daemoniker._signals_windows_main')
         worker_env = {'__CREATE_SIGHANDLER__': 'True'}
         worker_env.update(_get_clean_env())
         

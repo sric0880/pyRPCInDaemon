@@ -10,7 +10,6 @@ wrong_user = "wrong-user"
 wrong_pwd = "wrong-pwd"
 
 
-@pytest.mark.skip
 def test_exceptions(param):
     with pytest.raises(rpcindaemon.ParamError) as e:
         rpcindaemon.Task(0, "echo hello", "").run()
@@ -56,7 +55,7 @@ def test_exceptions(param):
 def exist_pid():
     return 4 if sys.platform == "win32" else 1
 
-@pytest.mark.skip
+
 def test_get_pid(param, exist_pid):
     t = rpcindaemon.Task(
         0,
