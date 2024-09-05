@@ -89,7 +89,7 @@ class RpcServer:
                 try:
                     # Receive a message
                     func_name, args, kwargs = c.recv()
-                except EOFError:
+                except (EOFError, OSError): # oserror if conn is closed by server side
                     self._all_connections.remove(c)
                 else:
                     try:
