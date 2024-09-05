@@ -175,12 +175,15 @@ class Task:
             _n += 1
 
     def is_alive(self):
+        """
+        return True if remote pid exists, but maybe exists if return False.
+        """
         return self.get_pid() > 0
 
     def get_pid(self):
         """
         return pid:
-            0 - 进程不存在, 也有可能存在，但是因为网络错误
+            0 - process not exists, but maybe exists if some network error occurs.
         """
         if not self.running:
             return 0
@@ -189,7 +192,7 @@ class Task:
             try:
                 pid_or_none = self._client.do_rpc("get_pid")
                 return pid_or_none if pid_or_none else 0
-            except (socket.timeout, ConnectionError):
+            except (socket.timeout, ConnectionError, EOFError):
                 # 无法连接到目标服务器，可能说明进程不存在，也有可能是网络错误
                 return 0
         else:

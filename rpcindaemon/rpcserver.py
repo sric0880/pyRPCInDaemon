@@ -1,9 +1,9 @@
 import os
+import datetime
 import socket
 import threading
 import typing
-from concurrent.futures import ThreadPoolExecutor
-from multiprocessing.connection import Listener, Connection, Client
+from multiprocessing.connection import Listener, Client, wait
 
 from .exceptions import MethodNotFound
 
@@ -33,7 +33,6 @@ class RpcServer:
     def __init__(self, port: int, cmd_cls: typing.Type[ServerCmd]):
         self.port = port
         self.cmd_cls = cmd_cls
-        self._thread_pool = ThreadPoolExecutor(max_workers=10)
         self._server = None
         self._stop = False
         self._socket_info = None
@@ -42,22 +41,22 @@ class RpcServer:
         host = socket.gethostbyname(socket.gethostname())
         self._socket_info = (host, self.port)
         self._server = Listener(self._socket_info)
+        self._all_connections = []
         self._server_thread = threading.Thread(target=self.serve_forever)
         self._server_thread.daemon = True
         self._server_thread.start()
+        self._connection_thread = threading.Thread(target=self._do_recv)
+        self._connection_thread.daemon = True
+        self._connection_thread.start()
         print(f"Start server[RPC] running at {host}:{self.port}")
 
     def serve_forever(self):
-        all_connections = []
         while True:
             try:
                 conn = self._server.accept()
-                all_connections.append(conn)
+                self._all_connections.append(conn)
                 if self._stop:
-                    for c in all_connections:
-                        c.close()
                     break
-                self._thread_pool.submit(_do_recv, conn, self.cmd_cls)
             except Exception as e: # accept error
                 print(e)
 
@@ -70,27 +69,32 @@ class RpcServer:
         if self._server_thread is not None:
             self._server_thread.join()
             self._server_thread = None
-        self._thread_pool.shutdown(wait=True)
+        print(datetime.datetime.now(), "start close conn")
+        for c in self._all_connections:
+            c.close()
+        if self._connection_thread is not None:
+            self._connection_thread.join()
+            self._connection_thread = None
+        print(datetime.datetime.now(), "end close conn")
         if self._server is not None:
             self._server.close()
             self._server = None
         print("Close server[RPC]")
 
-def _do_recv(conn: Connection, cmd_cls: typing.Type[ServerCmd]):
-    try:
+    def _do_recv(self):
         while True:
-            # Receive a message
-            func_name, args, kwargs = conn.recv()
-            # Run the RPC and send a response
-            try:
-                r = cmd_cls(func_name, args, kwargs).execute()
-                conn.send(r)
-            except Exception as e:
-                conn.send(e)
-    except EOFError:
-        pass
-    finally:
-        try:
-            conn.close()
-        except: # maybe close by stop()
-            pass
+            if self._stop:
+                break
+            for c in wait(self._all_connections, timeout=0.1):
+                try:
+                    # Receive a message
+                    func_name, args, kwargs = c.recv()
+                except EOFError:
+                    self._all_connections.remove(c)
+                else:
+                    try:
+                        # Run the RPC and send a response
+                        r = self.cmd_cls(func_name, args, kwargs).execute()
+                        c.send(r)
+                    except Exception as e:
+                        c.send(e)
