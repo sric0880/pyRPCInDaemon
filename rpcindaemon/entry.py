@@ -27,8 +27,8 @@ def terminate_proc(pids: List[int]=[], task_ids: List[int]=[]):
         if not pids:
             raise ParamError("terminate_proc on linux need --task-ids=[pid,...] options")
         wait_procs = []
-        for _pid in pids:
-            p = psutil.Process(_pid)
+        for pid in pids:
+            p = psutil.Process(pid)
             p.send_signal(signal.SIGINT)
             wait_procs.append(p)
         gone, alive = psutil.wait_procs(wait_procs, timeout=10)

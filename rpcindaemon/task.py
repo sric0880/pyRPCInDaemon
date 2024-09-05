@@ -4,6 +4,7 @@ import os
 import random
 import socket
 import time
+from typing import List
 from collections import defaultdict
 from multiprocessing.connection import Connection
 
@@ -144,6 +145,7 @@ class Task:
             running = d.pop("running")
             obj = cls(**d)
             obj.running = running
+            return obj
 
     def run(self):
         """
@@ -296,25 +298,25 @@ def get_available_port(hostname: str):
                 return port
 
 
-# def batch_terminate(self, task_ids: list):
-#     ''' 批量退出 '''
-#     machines = defaultdict(list)
-#     for strat in strategy:
-#         machine = strat.get_machine()
-#         machines[machine].append(strat)
-#     for machine, strats in machines.items():
-#         sids = []
-#         pids = []
-#         for strat in strats:
-#             pid = self.get_pid(strat)
-#             self.close_client(strat.id)
-#             if pid:
-#                 sids.append(strat.id)
-#                 pids.append(pid)
-#         if sids and pids:
-#             cmd = f'{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry terminate_proc -p {pids} -t {sids}'
-#             try:
-#                 self._ssh_execute(cmd, machine)
-#             except Exception as e:
-#                 pass
-#     return True, None
+def batch_terminate(tasks: List[Task], timeout=12):
+    machines = defaultdict(list)
+    for t in tasks:
+        machines[t.hostname].append(t)
+    for hostname, _tasks in machines.items():
+        pids = []
+        tids = []
+        for t in _tasks:
+            if not t.running:
+                continue
+            pid = t.get_pid()
+            t.reset_client()
+            if pid:
+                pids.append(pid)
+                tids.append(t.task_id)
+            t.running = False
+        if tids and pids:
+            t = _tasks[0]
+            list_pids_repr = ','.join(map(str, pids))
+            list_tids_repr = ','.join(map(str, tids))
+            cmd = f'{t.py_env_activate} {t._working_dir} python -m rpcindaemon.entry terminate_proc -p [{list_pids_repr}] -t [{list_tids_repr}]'
+            _ssh_execute(cmd, hostname, t.username, t.password, timeout=timeout)

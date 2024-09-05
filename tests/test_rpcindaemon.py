@@ -103,7 +103,3 @@ def test_simple_run(param):
         password=param["pwd"],
         py_env_activate=param["py_env_activate"],
     ).run()
-
-
-def test_save_and_restore(param):
-    pass
