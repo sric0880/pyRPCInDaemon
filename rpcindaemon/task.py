@@ -168,10 +168,7 @@ class Task:
         _n = 1
         time.sleep(0.1)
         while True:
-            if _n > 5:
-                self.running = False
-                return
-            if self.is_alive():
+            if self.is_alive() or _n > 30:
                 return
             _n += 1
 
@@ -199,9 +196,7 @@ class Task:
         else:
             # 通过ssh读取pidfile文件获取进程ID
             cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry get-pid {self.task_id}"
-            return int(
-                _ssh_get(cmd, self.hostname, self.username, self.password, timeout=10)
-            )
+            return int(_ssh_get(cmd, self.hostname, self.username, self.password, 10))
 
     def do_rpc(self, func_name, *args, **kwargs):
         """
@@ -257,7 +252,7 @@ def _ssh_execute(cmd, hostname, username, pwd, timeout):
             pass
 
 
-def _ssh_get(cmd, hostname, username, pwd, timeout=3):
+def _ssh_get(cmd, hostname, username, pwd, timeout):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

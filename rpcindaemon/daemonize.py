@@ -33,26 +33,25 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
         # 等待SIGTERM信号，子进程结束后会把信号返回给父进程，再由父进程处理
         def decorate_func(func):
             def _wrapper(task_id, *args, port=0, **kwargs):
-                pidfile = f"pidfile-{task_id}"
-                if os.path.exists(pidfile):
-                    raise PidfileExistsError(
-                        f"{pidfile} exists(task may be running), cannot overwrite it. something is wriong."
-                    )
-
                 from .daemoniker import Daemonizer
 
                 with Daemonizer() as (is_setup, daemonizer):
-                    if is_setup:
-                        # This code is run before daemonization.
-                        pass
+                    if is_setup:  # is parent
+                        pidfile = f"pidfile-{task_id}"
+                        if os.path.exists(pidfile):
+                            raise PidfileExistsError(
+                                f"{pidfile} exists(task may be running), cannot overwrite it. something is wriong."
+                            )
 
                     # We need to explicitly pass resources to the daemon; other variables
                     # may not be correct
+                    cwd = os.getcwd()
                     stdout_file = os.path.join(log_dir, f"pidfile-{task_id}.log")
                     invocation = " ".join(sys.argv)
                     is_parent, params = daemonizer(
                         f"pidfile-{task_id}",
                         (task_id, args, port, kwargs, server_cmd),
+                        chdir=cwd,
                         stdout_goto=stdout_file,
                         stderr_goto=stdout_file,
                         explicit_rescript=invocation,
@@ -186,7 +185,7 @@ class F:
             )
         pool = None
         try:
-            if sys.platform == 'win32':
+            if sys.platform == "win32":
                 # 在Linux下用spawn会卡死
                 multiprocessing.set_start_method("spawn", force=True)
             # Value 底层使用共享内存，控制子进程退出
