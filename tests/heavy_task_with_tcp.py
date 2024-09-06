@@ -1,7 +1,10 @@
-import time
 import datetime
+import time
+
 import fire
+
 import rpcindaemon
+
 
 class CustomServerCmd(rpcindaemon.ServerCmd):
     def deal_with_message(self, arg1, arg2, option_arg1=1):
@@ -9,18 +12,20 @@ class CustomServerCmd(rpcindaemon.ServerCmd):
 
     def deal_with_return(self, arg1, arg2, option_arg1=1):
         print("deal_with_return: ", arg1, arg2, option_arg1)
-        return arg1+arg2+ option_arg1
+        return arg1 + arg2 + option_arg1
+
 
 @rpcindaemon.makedaemon(server_cmd=CustomServerCmd)
-def heavy_backgournd_task(task_id: int, arg_sleep_time=10):
+def heavy_backgournd_task(task_id: int, f: rpcindaemon.F, arg_sleep_time=10):
     print(task_id, datetime.datetime.now(), "Start")
     t = 0
     while True:
         if t > arg_sleep_time:
             break
-        time.sleep(0.5) # will block signal term or signal int
+        time.sleep(0.5)  # will block signal term or signal int
         t += 0.5
     print(task_id, datetime.datetime.now(), "End")
+
 
 if __name__ == "__main__":
     fire.Fire(heavy_backgournd_task)

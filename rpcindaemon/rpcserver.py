@@ -1,9 +1,9 @@
-import os
 import datetime
+import os
 import socket
 import threading
 import typing
-from multiprocessing.connection import Listener, Client, wait
+from multiprocessing.connection import Client, Listener, wait
 
 from .exceptions import MethodNotFound
 
@@ -57,25 +57,23 @@ class RpcServer:
                 self._all_connections.append(conn)
                 if self._stop:
                     break
-            except Exception as e: # accept error
+            except Exception as e:  # accept error
                 print(e)
 
     def stop(self):
         self._stop = True
         try:
-            Client(self._socket_info) # to unblock accept()
+            Client(self._socket_info)  # to unblock accept()
         except:
             pass
         if self._server_thread is not None:
             self._server_thread.join()
             self._server_thread = None
-        print(datetime.datetime.now(), "start close conn")
         for c in self._all_connections:
             c.close()
         if self._connection_thread is not None:
             self._connection_thread.join()
             self._connection_thread = None
-        print(datetime.datetime.now(), "end close conn")
         if self._server is not None:
             self._server.close()
             self._server = None
@@ -89,7 +87,7 @@ class RpcServer:
                 try:
                     # Receive a message
                     func_name, args, kwargs = c.recv()
-                except (EOFError, OSError): # oserror if conn is closed by server side
+                except (EOFError, OSError):  # oserror if conn is closed by server side
                     self._all_connections.remove(c)
                 else:
                     try:

@@ -4,9 +4,9 @@ import os
 import random
 import socket
 import time
-from typing import List
 from collections import defaultdict
 from multiprocessing.connection import Connection
+from typing import List
 
 import paramiko
 
@@ -147,7 +147,7 @@ class Task:
             obj.running = running
             return obj
 
-    def run(self):
+    def run(self, ssh_exec_timeout=10):
         """
         开起远程进程。启动远程进程, 已经启动不再启动。不管启动是否成功，都返回。
         如需知道是否启动成功，请主动轮询
@@ -160,6 +160,7 @@ class Task:
             self.hostname,
             self.username,
             self.password,
+            ssh_exec_timeout,
         )
         self.reset_client()
         self.running = True
@@ -213,7 +214,7 @@ class Task:
     def terminate(self, timeout=3):
         """
         quit remote process
-        
+
         raise `rpcindaemon.exceptions.NetworkTimeoutError` if timeout. if your task is slow to quit,
         you should pass longer timeout, maybe 12, because a force quit is done after 10 seconds.
 
@@ -225,11 +226,11 @@ class Task:
         self.reset_client()
         if pid:
             cmd = f"{self.py_env_activate} {self._working_dir} python -m rpcindaemon.entry terminate_proc -p [{pid}] -t [{self.task_id}]"
-            _ssh_execute(cmd, self.hostname, self.username, self.password, timeout=timeout)
+            _ssh_execute(cmd, self.hostname, self.username, self.password, timeout)
         self.running = False
 
 
-def _ssh_execute(cmd, hostname, username, pwd, timeout=3):
+def _ssh_execute(cmd, hostname, username, pwd, timeout):
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -319,7 +320,7 @@ def batch_terminate(tasks: List[Task], timeout=12):
             t.running = False
         if tids and pids:
             t = _tasks[0]
-            list_pids_repr = ','.join(map(str, pids))
-            list_tids_repr = ','.join(map(str, tids))
-            cmd = f'{t.py_env_activate} {t._working_dir} python -m rpcindaemon.entry terminate_proc -p [{list_pids_repr}] -t [{list_tids_repr}]'
-            _ssh_execute(cmd, hostname, t.username, t.password, timeout=timeout)
+            list_pids_repr = ",".join(map(str, pids))
+            list_tids_repr = ",".join(map(str, tids))
+            cmd = f"{t.py_env_activate} {t._working_dir} python -m rpcindaemon.entry terminate_proc -p [{list_pids_repr}] -t [{list_tids_repr}]"
+            _ssh_execute(cmd, hostname, t.username, t.password, timeout)

@@ -13,4 +13,4 @@ keywords = ["ssh", "daemon", "rpc", "daemonize", "paramiko", "daemoniker", "remo
 dependencies = ["paramiko", "python-daemon", "psutil", "filelock", "fire"]
 
 [tool.setuptools]
-packages = ['rpcindaemon']
+packages = ['rpcindaemon', 'rpcindaemon.daemoniker']
