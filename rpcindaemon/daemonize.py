@@ -43,14 +43,14 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                                 f"{pidfile} exists(task may be running), cannot overwrite it. something is wriong."
                             )
 
-                    # We need to explicitly pass resources to the daemon; other variables
-                    # may not be correct
                     cwd = os.getcwd()
                     stdout_file = os.path.join(log_dir, f"pidfile-{task_id}.log")
                     invocation = " ".join(sys.argv)
+                    # 如果子进程在这行代码之前报错，_daemonize_windows.py会报
+                    # `RuntimeError('Daemon creation worker exited prematurely.')`
                     is_parent, params = daemonizer(
                         f"pidfile-{task_id}",
-                        (task_id, args, port, kwargs, server_cmd),
+                        (task_id, args, port, kwargs),
                         chdir=cwd,
                         stdout_goto=stdout_file,
                         stderr_goto=stdout_file,
@@ -62,7 +62,7 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                         pass
 
                 # We are now daemonized, and the parent just exited.
-                _task_id, _args, _port, _kwargs, _server_cmd = params
+                _task_id, _args, _port, _kwargs = params
                 from .daemoniker import SignalHandler1
 
                 win32_sighandler = SignalHandler1(f"pidfile-{_task_id}")
@@ -79,7 +79,7 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                 try:
                     if _port:
                         # setup a tcp server
-                        server = RpcServer(_port, _server_cmd)
+                        server = RpcServer(_port, server_cmd)
                         server.start()
                     func(_task_id, F(win32_sighandler, True), *_args, **_kwargs)
                 except:
