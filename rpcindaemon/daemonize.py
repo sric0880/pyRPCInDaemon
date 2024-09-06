@@ -177,7 +177,9 @@ class F:
             )
         pool = None
         try:
-            multiprocessing.set_start_method("spawn", force=True)
+            if sys.platform == 'win32':
+                # 在Linux下用spawn会卡死
+                multiprocessing.set_start_method("spawn", force=True)
             # Value 底层使用共享内存，控制子进程退出
             signal_stop = multiprocessing.Value(c_bool, False, lock=False)
             self._set_sighandler_multi_process(signal_stop)

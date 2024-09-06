@@ -1,14 +1,12 @@
 import time
 
-import pytest
-
 import rpcindaemon
 
 
-def test_heavy_task(param):
+def test_simple(param):
     t = rpcindaemon.Task(
-        10,
-        "python heavy_multiprocess_task.py",
+        200,
+        "python heavy_multiprocess_task.py simple",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
@@ -16,19 +14,48 @@ def test_heavy_task(param):
         working_dir=param["working_path"],
     )
     t.run()
-    assert t.is_alive()
-    time.sleep(1)
-    assert t.is_alive()
-    time.sleep(10)
-    assert not t.is_alive()
 
-    t.run()  # run again
-    assert t.is_alive()
-    cur_pid = t.get_pid()
-    time.sleep(1)
-    with pytest.raises(rpcindaemon.TaskIsRunningError):
-        t.run()  # run again with no effects
-    assert t.get_pid() == cur_pid
-    t.terminate()
-    assert not t.is_alive()
-    t.terminate()  # doing nothing
+
+def test_redirect_stdout_to_file(param):
+    t = rpcindaemon.Task(
+        201,
+        "python heavy_multiprocess_task.py redirect_stdout_to_file",
+        param["hostname"],
+        username=param["user"],
+        password=param["pwd"],
+        py_env_activate=param["py_env_activate"],
+        working_dir=param["working_path"],
+    )
+    t.run()
+    while t.is_alive():
+        time.sleep(1)
+
+
+def test_msg_queue(param):
+    t = rpcindaemon.Task(
+        202,
+        "python heavy_multiprocess_task.py msg_queue",
+        param["hostname"],
+        username=param["user"],
+        password=param["pwd"],
+        py_env_activate=param["py_env_activate"],
+        working_dir=param["working_path"],
+    )
+    t.run()
+    while t.is_alive():
+        time.sleep(1)
+
+
+def test_lock_and_msg_queue(param):
+    t = rpcindaemon.Task(
+        203,
+        "python heavy_multiprocess_task.py lock_and_msg_queue",
+        param["hostname"],
+        username=param["user"],
+        password=param["pwd"],
+        py_env_activate=param["py_env_activate"],
+        working_dir=param["working_path"],
+    )
+    t.run()
+    while t.is_alive():
+        time.sleep(1)
