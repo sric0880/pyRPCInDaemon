@@ -28,8 +28,17 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
     """
     if sys.platform == "win32":
 
+        # Windows下没有SIGINT, SIGTERM底层调用process.terminate()直接杀死进程，
+        # 所以捕获不到SIGTERM，但是进程退出的返回值是SIGTERM，所以多开一个子进程，
+        # 等待SIGTERM信号，子进程结束后会把信号返回给父进程，再由父进程处理
         def decorate_func(func):
             def _wrapper(task_id, *args, port=0, **kwargs):
+                pidfile = f"pidfile-{task_id}"
+                if os.path.exists(pidfile):
+                    raise PidfileExistsError(
+                        f"{pidfile} exists(task may be running), cannot overwrite it. something is wriong."
+                    )
+
                 from .daemoniker import Daemonizer
 
                 with Daemonizer() as (is_setup, daemonizer):

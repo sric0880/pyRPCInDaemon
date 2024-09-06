@@ -39,7 +39,9 @@ def test_certain_port(param):
     _test_port(param, 11, 9999)
 
 
-@pytest.mark.skip
+# 如果是云服务器，那么接口不是随便暴露的，要设置安全组
+# 才能访问对应接口，所以用不了随机接口。
+# @pytest.mark.skip
 def test_random_port(param):
     _test_port(param, 12, 0)
 
