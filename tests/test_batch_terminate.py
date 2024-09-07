@@ -6,7 +6,7 @@ import rpcindaemon
 def test_batch_terminate(param):
     t = rpcindaemon.Task(
         20,
-        "python heavy_task.py --arg_sleep_time=30",  # longer in case to keep alive before run terminate
+        "python heavy_task.py --arg_live_time=30",  # longer in case to keep alive before run terminate
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
@@ -16,7 +16,7 @@ def test_batch_terminate(param):
 
     t2 = rpcindaemon.Task(
         21,
-        "python heavy_task_with_tcp.py --arg_sleep_time=30",
+        "python heavy_task_with_tcp.py --arg_live_time=30",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],

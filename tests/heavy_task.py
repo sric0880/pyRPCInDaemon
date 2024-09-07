@@ -7,11 +7,11 @@ import rpcindaemon
 
 
 @rpcindaemon.makedaemon()
-def heavy_backgournd_task(task_id: int, f: rpcindaemon.F, arg_sleep_time=20):
+def heavy_backgournd_task(task_id: int, f: rpcindaemon.F, arg_live_time=20):
     print(task_id, datetime.datetime.now(), "Start")
     t = 0
     while True:
-        if t > arg_sleep_time:
+        if t > arg_live_time:
             break
         time.sleep(0.5)  # will block signal term or signal int
         t += 0.5
