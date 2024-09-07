@@ -24,3 +24,11 @@ class PidfileExistsError(RPCInDaemonError):
 
 class MethodNotFound(RPCInDaemonError):
     pass
+
+
+class TaskStartTimeout(RPCInDaemonError):
+    pass
+
+
+class TaskDeadTimeout(RPCInDaemonError):
+    pass

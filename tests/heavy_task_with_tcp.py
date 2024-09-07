@@ -16,7 +16,7 @@ class CustomServerCmd(rpcindaemon.ServerCmd):
 
 
 @rpcindaemon.makedaemon(server_cmd=CustomServerCmd)
-def heavy_backgournd_task(task_id: int, f: rpcindaemon.F, arg_sleep_time=10):
+def heavy_backgournd_task(task_id: int, f: rpcindaemon.F, arg_sleep_time=20):
     print(task_id, datetime.datetime.now(), "Start")
     t = 0
     while True:

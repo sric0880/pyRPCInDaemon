@@ -1,8 +1,3 @@
-import signal
-import subprocess
-import sys
-import time
-
 import rpcindaemon
 
 # windows 下不能发送SIGINT，无法测试。发送signal.CTRL_C_EVENT会导致测试中断
@@ -22,6 +17,7 @@ def test_daemon_multiprocess_signal_quit(param):
         working_dir=param["working_path"],
     )
     t.run()
+    t.wait_alive(10)
     assert t.is_alive()
 
     t.terminate()
@@ -40,6 +36,7 @@ def test_daemon_singleprocess_signal_quit(param):
         port=9999,
     )
     t.run()
+    t.wait_alive(10)
     assert t.is_alive()
 
     t.terminate()

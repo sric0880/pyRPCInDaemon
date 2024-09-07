@@ -27,8 +27,8 @@ def test_redirect_stdout_to_file(param):
         working_dir=param["working_path"],
     )
     t.run()
-    while t.is_alive():
-        time.sleep(1)
+    time.sleep(10)
+    t.wait_dead()
 
 
 def test_msg_queue(param):
@@ -42,8 +42,8 @@ def test_msg_queue(param):
         working_dir=param["working_path"],
     )
     t.run()
-    while t.is_alive():
-        time.sleep(1)
+    time.sleep(10)
+    t.wait_dead()
 
 
 def test_lock_and_msg_queue(param):
@@ -57,5 +57,5 @@ def test_lock_and_msg_queue(param):
         working_dir=param["working_path"],
     )
     t.run()
-    while t.is_alive():
-        time.sleep(1)
+    time.sleep(10)
+    t.wait_dead()

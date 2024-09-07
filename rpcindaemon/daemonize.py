@@ -76,12 +76,25 @@ def makedaemon(log_dir=".", server_cmd=ServerCmd):
                         server = None
 
                 atexit.register(_release)  # 可以注册多次
+                f = F(win32_sighandler, True)
+
+                # 必须设置信号处理函数，否者会报
+                # `rpcindaemon.daemoniker.exceptions.SIGINT`来结束进程
+                # 处理函数后面可以覆盖
+                def _sig_handler():
+                    # 该函数是在win32_sighandler的子线程中调用
+                    # 要主动将主线程杀死
+                    import _thread
+
+                    _thread.interrupt_main()
+
+                f.set_sighandler_single_process(_sig_handler)
                 try:
                     if _port:
                         # setup a tcp server
                         server = RpcServer(_port, server_cmd)
                         server.start()
-                    func(_task_id, F(win32_sighandler, True), *_args, **_kwargs)
+                    func(_task_id, f, *_args, **_kwargs)
                 except:
                     raise
                 finally:
@@ -250,10 +263,11 @@ class F:
             print(f"got signal {signum}, stop process!", flush=True)
             handler()
 
-        def _sigstop_linuxlike(signum, stackframe):
-            _sigstop(signum)
-
         if self._win32_sighandler is None:
+
+            def _sigstop_linuxlike(signum, stackframe):
+                _sigstop(signum)
+
             if signal.getsignal(signal.SIGINT) == signal.default_int_handler:
                 signal.signal(signal.SIGINT, _sigstop_linuxlike)
             if signal.getsignal(signal.SIGTERM) == signal.SIG_DFL:
@@ -262,7 +276,6 @@ class F:
             # Windows daemon环境下
             def __sigstop(signum):
                 _sigstop(signum)
-                self._win32_sighandler._stop_nowait()
 
             self._win32_sighandler.sigint = __sigstop
             self._win32_sighandler.sigterm = __sigstop
@@ -294,7 +307,6 @@ class F:
 
             def __sigstop(signum):
                 _parentproc_sigstop(signal_stop, signum)
-                self._win32_sighandler._stop_nowait()
 
             self._win32_sighandler.sigint = __sigstop
             self._win32_sighandler.sigterm = __sigstop

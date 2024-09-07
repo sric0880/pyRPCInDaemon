@@ -17,14 +17,14 @@ def redirect_stdout_to_file(a, is_daemon):
         # 后台运行要将标准输出写入文件
         stdout_file = f"pidfile-child-{a}.log"
         sys.stderr = sys.stdout = open(stdout_file, "w")
-    time.sleep(0.5)
+    time.sleep(2)
     print("test redirect_stdout_to_file end.", flush=True)
 
 
 def msg_queue(a, is_daemon):
     msg_queue = rpcindaemon.daemonize.message_queue
     msg_queue.put(f"deal with {a} start")
-    time.sleep(0.5)
+    time.sleep(2)
     msg_queue.put(f"deal with {a} over")
 
 
@@ -37,7 +37,7 @@ def lock_and_msg_queue(a, is_daemon):
     lock = rpcindaemon.daemonize.lock
     with lock:
         msg_queue.put(f"deal with {a} start")
-        time.sleep(0.5)
+        time.sleep(1)
         msg_queue.put(f"deal with {a} over")
 
 

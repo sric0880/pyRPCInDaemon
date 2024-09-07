@@ -8,7 +8,7 @@ import psutil
 from .exceptions import ParamError
 
 
-def terminate_proc(pids: List[int]=[], task_ids: List[int]=[]):
+def terminate_proc(pids: List[int] = [], task_ids: List[int] = []):
     """
     terminate processes by pids or task-ids
 
@@ -18,14 +18,19 @@ def terminate_proc(pids: List[int]=[], task_ids: List[int]=[]):
     """
     if sys.platform == "win32":
         if not task_ids:
-            raise ParamError("terminate_proc on windows need --task-ids=[tid,...] options")
+            raise ParamError(
+                "terminate_proc on windows need --task-ids=[tid,...] options"
+            )
         from rpcindaemon.daemoniker import SIGINT, send
+
         for tid in task_ids:
             # Send a SIGINT to a process denoted by a PID file
             send(f"pidfile-{tid}", SIGINT)
     else:
         if not pids:
-            raise ParamError("terminate_proc on linux need --task-ids=[pid,...] options")
+            raise ParamError(
+                "terminate_proc on linux need --task-ids=[pid,...] options"
+            )
         wait_procs = []
         for pid in pids:
             p = psutil.Process(pid)
@@ -42,13 +47,18 @@ def get_pid(task_id: int):
     try:
         with open(f"pidfile-{task_id}", "r") as f:
             pid = int(f.read().strip())
-        return pid if psutil.pid_exists(pid) else 0
+        if psutil.pid_exists(pid):
+            print(pid)
+        else:
+            print(0)
     except:
-        return 0
+        print(0)
 
 
 if __name__ == "__main__":
-    fire.Fire({
-        "terminate_proc": terminate_proc,
-        "get_pid": get_pid,
-    })
+    fire.Fire(
+        {
+            "terminate_proc": terminate_proc,
+            "get_pid": get_pid,
+        }
+    )

@@ -20,7 +20,7 @@ def test_heavy_task(param):
 
     t = rpcindaemon.Task(
         10,
-        "python heavy_task.py",
+        "python heavy_task.py --arg-sleep-time=40",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
@@ -28,10 +28,9 @@ def test_heavy_task(param):
         working_dir=param["working_path"],
     )
     t.run()
+    t.wait_alive(10)
     assert t.is_alive()
-    time.sleep(1)
-    assert t.is_alive()
-    time.sleep(10)
+    time.sleep(40)
     assert not t.is_alive()
 
     t.run()  # run again
@@ -46,28 +45,10 @@ def test_heavy_task(param):
     t.terminate()  # doing nothing
 
 
-def test_passing_params(param):
-    t = rpcindaemon.Task(
-        10,
-        "python heavy_task.py --arg-sleep-time=3",
-        param["hostname"],
-        username=param["user"],
-        password=param["pwd"],
-        py_env_activate=param["py_env_activate"],
-        working_dir=param["working_path"],
-    )
-    t.run()
-    assert t.is_alive()
-    time.sleep(1)
-    assert t.is_alive()
-    time.sleep(3)
-    assert not t.is_alive()
-
-
 def test_save_and_restore(param):
     t = rpcindaemon.Task(
         10,
-        "python heavy_task.py",
+        "python heavy_task.py --arg-sleep-time=40",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
@@ -75,6 +56,7 @@ def test_save_and_restore(param):
         working_dir=param["working_path"],
     )
     t.run()
+    t.wait_alive(10)
     assert t.is_alive()
 
     t.save(".")

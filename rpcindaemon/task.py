@@ -147,7 +147,7 @@ class Task:
             obj.running = running
             return obj
 
-    def run(self, ssh_exec_timeout=10):
+    def run(self, ssh_exec_timeout=60):
         """
         开起远程进程。启动远程进程, 已经启动不再启动。不管启动是否成功，都返回。
         如需知道是否启动成功，请主动轮询
@@ -164,13 +164,39 @@ class Task:
         )
         self.reset_client()
         self.running = True
-        # wait until remote process is alive
-        _n = 1
+
+    def wait_alive(self, timeout):
+        """
+        wait till remote process is alive
+
+        raise `TaskStartTimeout` if timeout. timeout must be great than 0
+        """
+        t = 0
         time.sleep(0.1)
         while True:
-            if self.is_alive() or _n > 30:
+            st = time.time()
+            if self.is_alive():
                 return
-            _n += 1
+            t += time.time() - st
+            if t > timeout:
+                raise TaskStartTimeout("wait task alive timeout")
+
+    def wait_dead(self, timeout=0):
+        """
+        wait till remote process is dead
+
+        raise `TaskDeadTimeout` if timeout
+
+        if timeout == 0: block wait
+        """
+        t = 0
+        while True:
+            st = time.time()
+            if not self.is_alive():
+                return
+            t += time.time() - st
+            if timeout > 0 and t > timeout:
+                raise TaskDeadTimeout("wait task dead timeout")
 
     def is_alive(self):
         """
@@ -180,6 +206,8 @@ class Task:
 
     def get_pid(self):
         """
+        10 seconds for ssh get pid timeout.
+
         return pid:
             0 - process not exists, but maybe exists if some network error occurs.
         """
@@ -206,7 +234,7 @@ class Task:
             return self._client.do_rpc(func_name, *args, **kwargs)
         return None
 
-    def terminate(self, timeout=3):
+    def terminate(self, timeout=12):
         """
         quit remote process
 
@@ -297,7 +325,10 @@ def get_available_port(hostname: str):
                 return port
 
 
-def batch_terminate(tasks: List[Task], timeout=12):
+def batch_terminate(tasks: List[Task], ssh_exec_timeout=12):
+    """
+    并不能保证所有进程都退出，可能只有部分退出
+    """
     machines = defaultdict(list)
     for t in tasks:
         machines[t.hostname].append(t)
@@ -312,10 +343,9 @@ def batch_terminate(tasks: List[Task], timeout=12):
             if pid:
                 pids.append(pid)
                 tids.append(t.task_id)
-            t.running = False
         if tids and pids:
             t = _tasks[0]
             list_pids_repr = ",".join(map(str, pids))
             list_tids_repr = ",".join(map(str, tids))
             cmd = f"{t.py_env_activate} {t._working_dir} python -m rpcindaemon.entry terminate_proc -p [{list_pids_repr}] -t [{list_tids_repr}]"
-            _ssh_execute(cmd, hostname, t.username, t.password, timeout)
+            _ssh_execute(cmd, hostname, t.username, t.password, ssh_exec_timeout)

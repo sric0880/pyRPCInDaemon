@@ -17,15 +17,17 @@ def _test_port(param, task_id, port):
         port=port,
     )
     t.run()
+    t.wait_alive(10)
     assert t.is_alive()
     with pytest.raises(rpcindaemon.MethodNotFound):
         t.do_rpc("deal_not_found")
     assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
     assert t.do_rpc("deal_with_message", 1, 23, 45) is None
-    time.sleep(15)
+    time.sleep(25)
     assert not t.is_alive()
 
     t.run()  # run again
+    t.wait_alive(10)
     assert t.is_alive()
     time.sleep(1)
     assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
@@ -49,7 +51,7 @@ def test_random_port(param):
 def test_save_and_restore(param):
     t = rpcindaemon.Task(
         13,
-        "python heavy_task_with_tcp.py",
+        "python heavy_task_with_tcp.py --arg-sleep-time=40",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
@@ -58,6 +60,7 @@ def test_save_and_restore(param):
         port=9999,
     )
     t.run()
+    t.wait_alive(10)
     assert t.is_alive()
     assert t.do_rpc("deal_with_return", 1, 23, 45) == 69
 
