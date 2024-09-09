@@ -69,11 +69,11 @@ class RpcServer:
         if self._server_thread is not None:
             self._server_thread.join()
             self._server_thread = None
-        for c in self._all_connections:
-            c.close()
         if self._connection_thread is not None:
             self._connection_thread.join()
             self._connection_thread = None
+        for c in self._all_connections:
+            c.close()
         if self._server is not None:
             self._server.close()
             self._server = None
