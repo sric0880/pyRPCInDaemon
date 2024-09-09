@@ -20,7 +20,7 @@ def test_heavy_task(param):
 
     t = rpcindaemon.Task(
         10,
-        "python heavy_task.py --arg-sleep-time=40",
+        "python heavy_task.py --arg-live-time=40",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
@@ -48,7 +48,7 @@ def test_heavy_task(param):
 def test_save_and_restore(param):
     t = rpcindaemon.Task(
         10,
-        "python heavy_task.py --arg-sleep-time=40",
+        "python heavy_task.py --arg-live-time=40",
         param["hostname"],
         username=param["user"],
         password=param["pwd"],
