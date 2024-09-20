@@ -83,6 +83,7 @@ class RpcServer:
         while True:
             if self._stop:
                 break
+            # FIXME: 在Windows下wait会导致其他线程的IO操作阻塞，严重影响性能
             for c in wait(self._all_connections, timeout=0.1):
                 try:
                     # Receive a message
