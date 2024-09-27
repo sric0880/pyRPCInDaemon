@@ -196,19 +196,17 @@ class F:
             raise ParamError(
                 "message_queue and message_handler have to be None or not None at the same time"
             )
-        pool = None
-        try:
-            if sys.platform == "win32":
-                # 在Linux下用spawn会卡死
-                multiprocessing.set_start_method("spawn", force=True)
-            # Value 底层使用共享内存，控制子进程退出
-            signal_stop = multiprocessing.Value(c_bool, False, lock=False)
-            self._set_sighandler_multi_process(signal_stop)
-            # lock message_queue signal_stop 可以传入Process，但是不能通过pool.map 参数传入
-            # _init_pool_processe 和三个参数一起传入Process，并在子进程中执行_init_pool_processes函数
-            pool = multiprocessing.Pool(
-                max_cpus, _init_pool_processe, (lock, message_queue, signal_stop)
-            )
+        if sys.platform == "win32":
+            # 在Linux下用spawn会卡死
+            multiprocessing.set_start_method("spawn", force=True)
+        # RawValue 底层使用共享内存，控制子进程退出
+        signal_stop = multiprocessing.RawValue(c_bool, False)
+        self._set_sighandler_multi_process(signal_stop)
+        # lock message_queue signal_stop 可以传入Process，但是不能通过pool.map 参数传入
+        # _init_pool_processe 和三个参数一起传入Process，并在子进程中执行_init_pool_processes函数
+        with multiprocessing.Pool(
+            max_cpus, _init_pool_processe, (lock, message_queue, signal_stop)
+        ) as pool:
             mapresult = pool.starmap_async(
                 func, [(arg, self._is_daemon) for arg in args]
             )
@@ -234,19 +232,8 @@ class F:
                         pass
                     else:
                         raise
-        except KeyboardInterrupt:
-            print("got ^C while pool mapping, terminating the pool")
-            if pool is not None:
-                pool.terminate()
-                print("multiprocessing pool is terminated")
-        except Exception as e:
-            print("got multiprocessing error: ", str(e))
-            if pool is not None:
-                pool.terminate()
-                print("multiprocessing pool is terminated")
-        finally:
-            if pool is not None:
-                pool.close()
+            pool.close()
+            pool.join()
 
     def set_sighandler_single_process(self, handler):
         """
